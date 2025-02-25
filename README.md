@@ -19,7 +19,11 @@ TODOs:
 
 I am using Ubuntu and have not tested any other platforms, but this project should be reasonably simple to port.
 
-* TODO
+* curl
+* make
+* xz-utils
+* qemu qemu-user-static binfmt-support ?
+* TODO...
 
 ## License
 
