@@ -19,6 +19,10 @@ $(BUILD)/base.img: $(BUILD)/base.img.xz
 .PHONY: base_image
 base_image: $(BUILD)/base.img
 
+.PHONY: chroot_base_image
+chroot_base_image: $(BUILD)/base.img
+	sudo sh tools/chroot_image.sh
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILD)/*
