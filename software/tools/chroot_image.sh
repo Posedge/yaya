@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#
 # Script using QEMU to emulate a Raspberry Pi and open a shell within the image environment.
 # Needs to be executed as root. Usage:
 #
