@@ -5,40 +5,60 @@
 set -e
 
 source ./build_config.env
-if [ -z "$$PI_PASSWORD" -o -z "$$WIFI_SSID" -o -z "$$WIFI_PASSWORD" ]; then
-    echo Provide a pi password, wifi SSID and wifi password in your build config.
+if [ -z "$$PI_PASSWORD" -o -z "$$WIFI_SSID" -o -z "$$WIFI_PASSWORD" -o -z "$$WIFI_COUNTRY" ]; then
+    echo Provide a pi password, wifi SSID, password and country in your build config.
     exit 1
 fi
 
-if [ -z "$1" -o -z "$2" ]; then
+if [ -z "$2" ]; then
     echo "Usage: $0 <input-base-image> <output-sd-image>"
     exit 1
 fi
 
 input="$1"
 output="$2"
+PI_PASSWORD_ENCRYPTED=$(openssl passwd -5 "$PI_PASSWORD")
+WIFI_COUNTRY=${WIFI_COUNTRY^^}
 
 rm -rf "$output"
 cp "$input" "$output"
+
+customizer_file=$(
+    env \
+        PI_PASSWORD_ENCRYPTED="$PI_PASSWORD_ENCRYPTED" \
+        PI_AUTHORIZED_KEY="$PI_AUTHORIZED_KEY" \
+        WIFI_SSID="$WIFI_SSID" \
+        WIFI_PASSWORD="$WIFI_PASSWORD" \
+        WIFI_COUNTRY="$WIFI_COUNTRY" \
+        envsubst < custom.toml.template
+)
 sudo tools/chroot_image.sh "$output" <<EOF
-    (echo "$PI_PASSWORD"; echo "$PI_PASSWORD") | passwd pi || exit 1
+    echo '$customizer_file' > /boot/custom.toml
 
-    systemctl enable ssh
+    # Startup scripts
+    mkdir -p /yaya
+    echo > /yaya/setup.sh '
+        # Enable wifi
+        rfkill unblock wlan
+        for filename in /var/lib/systemd/rfkill/*:wlan ; do
+            echo 0 > \$filename
+        done
 
-    echo > /etc/wpa_supplicant/wpa_supplicant.conf '
-        country=ch
-        update_config=1
-        ctrl_interface=/var/run/wpa_supplicant
-
-        network={
-            scan_ssid=1
-            ssid="$WIFI_SSID"
-            psk="$WIFI_PASSWORD"
-        }
+        # This file is more of a placeholder at this point.
     '
-    echo "Created wifi config."
+    echo > /etc/systemd/system/yaya-startup.service '
+        [Unit]
+        Description=Yaya startup configuration
 
-    # TODO any updates to firstboot needed?
+        [Service]
+        Type=simple
+        ExecStart=sh /yaya/setup.sh
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target
+    '
+    systemctl enable yaya-startup.service
 EOF
 
 echo "Created $output."

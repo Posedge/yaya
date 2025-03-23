@@ -23,7 +23,7 @@ $(BUILD)/base.img: $(BUILD)/base.img.xz
 	rm -rf $(BUILD)/base.img
 	unxz -k $(BUILD)/base.img.xz
 
-$(BUILD)/sd.img: tools/make_sd_image.sh $(BUILD)/base.img
+$(BUILD)/sd.img: tools/make_sd_image.sh $(BUILD)/base.img build_config.env custom.toml.template
 	tools/make_sd_image.sh $(BUILD)/base.img $(BUILD)/sd.img
 
 .PHONY: sd_image

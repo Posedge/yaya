@@ -1,0 +1,28 @@
+# Template for the custom.toml file for headless first-time setup on the Pi.
+# See https://gist.github.com/lpenz/ef21bb38a7aa12ebde17fa719a8546b5.
+
+config_version = 1
+
+[system]
+hostname = "yaya"
+
+[user]
+name = "pi"
+password = "$PI_PASSWORD_ENCRYPTED"
+password_encrypted = true
+
+[ssh]
+enabled = true
+password_authentication = true
+authorized_keys = [ "$PI_AUTHORIZED_KEY" ]
+
+[wlan]
+ssid = "$WIFI_SSID"
+password = "$WIFI_PASSWORD"
+password_encrypted = false
+hidden = false
+country = "$WIFI_COUNTRY"
+
+[locale]
+keymap = "us"
+timezone = "Europe/Zurich"
