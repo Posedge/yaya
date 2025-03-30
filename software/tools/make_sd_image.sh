@@ -4,71 +4,41 @@
 
 set -e
 
-source ./build_config.env
-if [ -z "$$PI_PASSWORD" -o -z "$$WIFI_SSID" -o -z "$$WIFI_PASSWORD" -o -z "$$WIFI_COUNTRY" ]; then
-    echo Provide a pi password, wifi SSID, password and country in your build config.
-    exit 1
-fi
-
 if [ -z "$2" ]; then
     echo "Usage: $0 <input-base-image> <output-sd-image>"
     exit 1
 fi
 
-input="$1"
-output="$2"
-PI_PASSWORD_ENCRYPTED=$(openssl passwd -5 "$PI_PASSWORD")
-WIFI_COUNTRY=${WIFI_COUNTRY^^}
-
-rm -rf "$output"
-cp "$input" "$output"
-
+source ./build_config.env
+if [ -z "$$PI_PASSWORD" -o -z "$$WIFI_SSID" -o -z "$$WIFI_PASSWORD" -o -z "$$WIFI_COUNTRY" ]; then
+    echo Provide a pi password, wifi SSID, password and country in your build config.
+    exit 1
+fi
 if [ "${DATA_PARTITION_SIZE: -1}" != "G" ]; then
     echo Specify data partition size with \'G\' suffix.
     exit 1
 fi
 data_part_size=$((${DATA_PARTITION_SIZE: 0:-1} * 1024**3))
 
-customizer_file=$(
+input="$1"
+output="$2"
+PI_PASSWORD_HASH=$(openssl passwd -5 "$PI_PASSWORD")
+WIFI_COUNTRY=${WIFI_COUNTRY^^}
+
+rm -rf "$output"
+cp "$input" "$output"
+
+# Setup in a chroot environment within the img file.
+export customizer_file=$(
     env \
-        PI_PASSWORD_ENCRYPTED="$PI_PASSWORD_ENCRYPTED" \
+        PI_PASSWORD_HASH="$PI_PASSWORD_HASH" \
         PI_AUTHORIZED_KEY="$PI_AUTHORIZED_KEY" \
         WIFI_SSID="$WIFI_SSID" \
         WIFI_PASSWORD="$WIFI_PASSWORD" \
         WIFI_COUNTRY="$WIFI_COUNTRY" \
-        envsubst < custom.toml.template
+        envsubst < ./os/custom.toml.template
 )
-sudo tools/chroot_image.sh "$output" <<EOF
-    echo '$customizer_file' > /boot/custom.toml
-
-    # Shell settings
-    printf "\nalias ll='ls -lah'\n" | tee -a /home/pi/.bashrc | tee -a /root/.bashrc
-
-    # Startup scripts
-    mkdir -p /yaya
-    echo > /yaya/setup.sh '
-        # Enable wifi
-        rfkill unblock wlan
-        for filename in /var/lib/systemd/rfkill/*:wlan ; do
-            echo 0 > \$filename
-        done
-
-        # This file is more of a placeholder at this point.
-    '
-    echo > /etc/systemd/system/yaya-startup.service '
-        [Unit]
-        Description=Yaya startup configuration
-
-        [Service]
-        Type=simple
-        ExecStart=sh /yaya/setup.sh
-        RemainAfterExit=yes
-
-        [Install]
-        WantedBy=multi-user.target
-    '
-    systemctl enable yaya-startup.service
-EOF
+sudo tools/chroot_image.sh "$output" 'customizer_file' < ./os/chroot_setup.sh
 
 # Partitioning
 # We will be implementing an A/B partitioning scheme, with two system partitions being able to flash each other on the

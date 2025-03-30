@@ -1,10 +1,11 @@
 #!/bin/bash
 #
 # Script using QEMU to emulate a Raspberry Pi and open a shell within the image environment.
-# Needs to be executed as root. Usage:
+# Needs to be executed as root, and allows propagating environment variables. Usage:
 #
-# chroot_image.sh <image-file> <<EOF
-#   echo "Hello from pi!"
+# export greeter='Pi'
+# chroot_image.sh <image-file> 'greeter env_var2' <<EOF
+#   echo "Hello from $greeter!"
 #  EOF
 #
 # Much of this script is adapted from this gist:
@@ -13,6 +14,7 @@
 set -e
 
 IMAGE="$1"
+ENV_EXPORTS="$2"
 if [ -z "$IMAGE" ]; then
     echo "No image file provided. Run this script as '$0 <image>'."
     exit 1;
@@ -72,6 +74,9 @@ function main {
 
     cp /usr/bin/qemu-arm-static $PI_MOUNT_POINT/usr/bin/
 
+    for var in "$ENV_EXPORTS"; do
+        export $var
+    done
     chroot $PI_MOUNT_POINT /bin/bash
 
     clean

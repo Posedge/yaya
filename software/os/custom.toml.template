@@ -8,7 +8,7 @@ hostname = "yaya"
 
 [user]
 name = "pi"
-password = "$PI_PASSWORD_ENCRYPTED"
+password = "$PI_PASSWORD_HASH"
 password_encrypted = true
 
 [ssh]
