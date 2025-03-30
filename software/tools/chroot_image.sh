@@ -26,7 +26,7 @@ fi
 mkdir -p $PI_MOUNT_POINT
 
 function unmount_loop {
-    # Unmount existing image
+    # Unmount any existing image
     for i in $(losetup -j $IMAGE | cut -d: -f1); do
         echo Unmounting $IMAGE at $i...
         losetup -d $i
@@ -48,15 +48,21 @@ function clean {
 function main {
     unmount_loop
 
-    # Mount image
-    LOOP=`losetup -f`
-    echo Using loop device: $LOOP
-    losetup -P $LOOP $IMAGE
+    # Mount image (boot and first system partition only)
+    LOOP_BOOT=`losetup -f`
+    echo "Loop device for boot partition: $LOOP_BOOT"
+    BOOT_START=$(sfdisk $IMAGE -l -o START -q | sed -n 2p)
+    losetup $LOOP_BOOT $IMAGE -o $(( $BOOT_START * 512 ))
+
+    LOOP_SYSTEM=`losetup -f`
+    echo "Loop device for system partition: $LOOP_SYSTEM"
+    SYSTEM_START=$(sfdisk $IMAGE -l -o START -q | sed -n 3p)
+    losetup $LOOP_SYSTEM $IMAGE -o $(( $SYSTEM_START * 512 ))
 
     # Mount image partitions
     echo Mounting raspberry pi image to: $PI_MOUNT_POINT
-    mount -o rw ${LOOP}p2 $PI_MOUNT_POINT
-    mount -o rw ${LOOP}p1 $PI_MOUNT_POINT/boot
+    mount -o rw ${LOOP_SYSTEM} $PI_MOUNT_POINT
+    mount -o rw ${LOOP_BOOT} $PI_MOUNT_POINT/boot
 
     # Bind mounts from running system
     mount --bind /dev $PI_MOUNT_POINT/dev
@@ -66,7 +72,6 @@ function main {
 
     cp /usr/bin/qemu-arm-static $PI_MOUNT_POINT/usr/bin/
 
-    export LOOP
     chroot $PI_MOUNT_POINT /bin/bash
 
     clean

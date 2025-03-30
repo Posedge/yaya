@@ -74,18 +74,15 @@ EOF
 # We will be implementing an A/B partitioning scheme, with two system partitions being able to flash each other on the
 # fly. This way we will not require flashing a new OS version on the SD card, but we can do it remotely, and we can also
 # have a persistent data partition.
-partition_sizes=$(sfdisk $output -l --bytes -o SIZE -q)
-if [ ! $(echo "$partition_sizes" | wc -l) = 3 ]; then
-    echo "Expected two partitions. Something went wrong. Output: $partition_sizes"
-    exit 1
-fi
 echo "Partitions in image: "
 sfdisk $output -l
+if [ ! "$(sfdisk $output -l -q | wc -l)" = 3 ]; then
+    echo "Expected two partitions. Something went wrong."
+    exit 1
+fi
 echo ""
 echo "Adding extra partitions..."
 
-boot_part_size=$(echo "$partition_sizes" | sed -n 2p)
-system_part_size=$(echo "$partition_sizes" | sed -n 3p)
 system_part_sectors=$(sfdisk $output -l -o SECTORS -q | sed -n 3p)
 system_part_end=$(sfdisk $output -l -o END -q | sed -n 3p)
 data_part_sectors=$(( $data_part_size / 512 ))
@@ -120,6 +117,6 @@ w
 
 # Truncate back down to the original image size. We only need the updated partition table in this image. We also don't
 # want to override an existing data partition on the Pi.
-truncate -s "$(( $system_part_end * 512 ))" $output
+truncate -s "$(( ($system_part_end + 1) * 512 ))" $output
 
 echo "Created $output."
