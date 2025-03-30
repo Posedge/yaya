@@ -66,6 +66,7 @@ function main {
 
     cp /usr/bin/qemu-arm-static $PI_MOUNT_POINT/usr/bin/
 
+    export LOOP
     chroot $PI_MOUNT_POINT /bin/bash
 
     clean

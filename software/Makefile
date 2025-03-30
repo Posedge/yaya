@@ -2,6 +2,7 @@
 .ONESHELL:
 SHELL = bash
 .SHELLFLAGS = -ce
+all: sd_image
 
 # output directory
 BUILD := build
